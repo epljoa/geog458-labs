@@ -4,26 +4,50 @@
     <meta charset='utf-8' />
     <title>my First Map</title>
     <meta name='viewport' content='width=device-width, initial-scale=1' />
+    
+    <!-- Load mapbox GL JS styles and Javascript so the map can be displayed and interacted-->
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
     <style>
+        /* remove page margin and the map fill the whole page space*/
         body { margin: 0; padding: 0; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
    </style>
 </head>
 <body>
+   <!-- container where mapbox will render -->
    <div id='map'></div>
    <script>
+      // Set map access token to authorize map to render 
       mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
+      
+      // Initialize the Mapbox instance and render the map inside the '#map' element.
       const mymap = new mapboxgl.Map({
+             // 
              container: 'map',
-             style: 'mapbox://styles/mapbox/satellite-v9',
-             projection: 'equalEarth', //Display the map as a globe since satellite-v9 defaults to Mercator
-             center: [-122.3032, 47.6555],
-             zoom:14
+             //style: 'mapbox://styles/mapbox/satellite-v9', // How to draw the map
+             //projection: 'equalEarth', //Display the map as a globe since satellite-v9 defaults to Mercator
+             center: [-122.2940, 47.6930], // Set map center using longitude first then latitude 
+             zoom:17 // Set intitial zoom level, the higher the closer to the ground
           });
-
+          
+          // load in map before changing its basemap settings
+          mymap.on('style.load', () => {
+               //set basemap lighting to dusk
+               mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
+               // hide all point of interest (icons) such as restaurants and stores
+               mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+               
+               // hide 3D objects, including buildings, trees, and landmarks, along with their related visual effects.
+               // this simplifies the map and makes street layouts and other geographic features easier to examine.
+               mymap.setConfigProperty('basemap', 'show3dObjects', false);
+               // hide public transit icons and labels to reduce clutter on the map.
+               // this is useful when focusing on neighborhood streets rather than transportation information.
+               mymap.setConfigProperty('basemap', 'showTransitLabels', false); 
+         });
+    // add fullscreen button so users can expand the map to fill the screen 
     mymap.addControl(new mapboxgl.FullscreenControl());
+    // add zoom-in,zoom-out, and compass to control map view
     mymap.addControl(new mapboxgl.NavigationControl());
 
 
