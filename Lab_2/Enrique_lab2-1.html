@@ -8,7 +8,9 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
     <style>
         body { margin: 0; padding: 0; }
+
         #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+
         /* Layout of the legend panel. */
         #legend {
             position: absolute;
@@ -144,6 +146,7 @@
                 }
             });
         });
+        // changes made
         mymap.on('click', 'earthquakes-layer', (event) => {
             const feature = event.features[0];
             const coordinates = feature.geometry.coordinates.slice(0, 2);
