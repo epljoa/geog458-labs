@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='utf-8' />
+    <title>my First Map</title>
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    
+    <!-- Load mapbox GL JS styles and Javascript so the map can be displayed and interacted-->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        /* remove page margin and the map fill the whole page space*/
+        /*body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; } */
+         body { margin: 0; padding: 0; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%;}
+        #marker {
+        background-image: url('https://docs.mapbox.com/mapbox-gl-js/assets/washington-monument.jpg');
+        background-size: cover;
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        cursor: pointer;
+        }
+        .mapboxgl-popup {
+            max-width: 200px;}
+   </style>
+</head>
+<body>
+   <!-- container where mapbox will render COPY COPY COPY -->
+   <div id='map'></div>
+   <script>
+      // Set map access token to authorize map to render 
+      mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
+      
+      // Initialize the Mapbox instance and render the map inside the '#map' element.
+      const mymap = new mapboxgl.Map({
+             // 
+             container: 'map',
+             style: 'mapbox://styles/mapbox/satellite-v9', // How to draw the map
+             //projection: 'equalEarth', //Display the map as a globe since satellite-v9 defaults to Mercator
+             center: [-122.2940, 47.6930], // Set map center using longitude first then latitude 
+             zoom:17 // Set intitial zoom level, the higher the closer to the ground
+          });
+
+           mymap.on('style.load', () => {
+        mymap.setFog({}); // Set the default atmosphere style
+         });
+       
+        mymap.on('load', () => {
+        mymap.addSource('earthquakes', {
+            type: 'geojson',
+            // Use a URL for the value for the `data` property.
+            data: 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_month.geojson'
+        });
+        mymap.addLayer({
+            'id': 'earthquakes-layer',
+           'type': 'circle',
+            'source': 'earthquakes',
+            'paint': {
+                'circle-radius': 4,
+                'circle-stroke-width': 2,
+                'circle-color': 'red',
+                'circle-stroke-color': 'white'
+                     }
+                    });
+        });
+
+            const el = document.createElement('div');
+            el.id = 'marker';
+       
+            const marker1 =  new mapboxgl.Marker(el)
+                                    .setLngLat([-122,47.5])
+                                    .setPopup(new mapboxgl.Popup().setText("hi"))
+                                    .addTo(mymap);
+          
+          // load in map before changing its basemap settings
+          mymap.on('style.load', () => {
+               //set basemap lighting to dusk
+               mymap.setConfigProperty('basemap', 'lightPreset', 'dusk');
+               // hide all point of interest (icons) such as restaurants and stores
+               mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+               
+               // hide 3D objects, including buildings, trees, and landmarks, along with their related visual effects.
+               // this simplifies the map and makes street layouts and other geographic features easier to examine.
+               mymap.setConfigProperty('basemap', 'show3dObjects', false);
+               // hide public transit icons and labels to reduce clutter on the map.
+               // this is useful when focusing on neighborhood streets rather than transportation information.
+               mymap.setConfigProperty('basemap', 'showTransitLabels', false); 
+         });
+    // add fullscreen button so users can expand the map to fill the screen 
+    mymap.addControl(new mapboxgl.FullscreenControl());
+    // add zoom-in,zoom-out, and compass to control map view
+    mymap.addControl(new mapboxgl.NavigationControl());
+
+
+// code from the next step will go here!
+</script>
+</body>
+</html>

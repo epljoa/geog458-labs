@@ -11,7 +11,7 @@
     <style>
         /* remove page margin and the map fill the whole page space*/
         body { margin: 0; padding: 0; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        map { position: absolute; top: 0; bottom: 0; width: 100%; }
    </style>
 </head>
 <body>
@@ -30,6 +30,13 @@
              center: [-122.2940, 47.6930], // Set map center using longitude first then latitude 
              zoom:17 // Set intitial zoom level, the higher the closer to the ground
           });
+            const el = document.createElement('div');
+            el.id = 'marker';
+       
+            const marker1 =  new mapboxgl.Marker(el)
+                                    .setLngLat([-122,47.5])
+                                    .setPopup(new mapboxgl.Popup().setText("hi"))
+                                    .addTo(mymap);
           
           // load in map before changing its basemap settings
           mymap.on('style.load', () => {
