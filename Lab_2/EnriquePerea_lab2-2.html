@@ -86,64 +86,39 @@
     <!-- Title and context explain what the map displays. -->
     <div id="map-title">
         <h1>World Cities: Population</h1>
-        <p>All cities with larger populations highlighted</p>
+        <p>All cities shown; the 10 most populated are highlighted</p>
     </div>
 
     <div id="legend"></div>
     
     <!-- Separate legend script. -->
         <script>
-            const legend = document.getElementById('legend');
+        const legend = document.getElementById('legend');
 
-            // These population ranges match the circle sizes and colors below.
-            const grades = [
-                '1 to under 5 million',
-                '5 to under 15 million',
-                '15 to under 20 million',
-                '20 million or more'
-            ];
-             // These are the circle radii used for the highlighted cities.
-            const radii = [5, 10, 16, 22];
+        const labels = ['<strong>City Population</strong>'];
 
-            // Light-to-dark pinks make larger cities stand out on the dark basemap.
-            const colors = [
-                '#FFC2D9',
-                '#FF78AC',
-                '#F72585',
-                '#A4135C'
-            ];
-
-            const labels = ['<strong>City Population</strong>'];
-
-            // Cities under 1 million remain pale yellow.
-            labels.push(
+        // The background layer shows all other cities.
+        labels.push(
             '<p class="break">' +
-            '<i class="dot" style="background:#fee8a8; width:4px; height:4px;"></i>' +
-            '<span>Under 1 million</span></p>'
-            );
+            '<i class="dot" style="background:#fee8a8; width:8px; height:8px;"></i>' +
+            '<span>Other cities</span></p>'
+        );
 
-            // Add each population category to the legend.
-            for (let i = 0; i < grades.length; i++) {
-            const diameter = 2 * radii[i];
+        // Pink circles highlight the 10 most populated cities.
+        labels.push(
+            '<p class="break">' +
+            '<i class="dot" style="background:#F72585; width:16px; height:16px;"></i>' +
+            '<span>10 most populated cities</span></p>'
+        );
 
-            labels.push(
-                '<p class="break">' +
-                '<i class="dot" style="background:' + colors[i] +
-                '; width:' + diameter + 'px; height:' + diameter +
-                'px;"></i>' +
-                '<span>' + grades[i] + '</span></p>'
-            );
-            }
+        const source =
+            '<p class="legend-note">' +
+            'Pink circles identify the 10 cities with the highest populations.' +
+            '</p>' +
+            '<p class="legend-source">Source: Natural Earth</p>';
 
-            // Explain how to read the symbols and identify the data source.
-            const source =
-                '<p class="legend-note">'   +
-                'Larger and darker pinks represent larger populations.' +
-                '</p>' +
-                '<p class="legend-source">Source: Natural Earth</p>';
-
-            legend.innerHTML = labels.join('') + source;
-        </script>
+        legend.innerHTML = labels.join('') + source;
+    </script>
 
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
@@ -199,64 +174,54 @@
                 }
             });
 
-            // Layer 2: highlight cities with populations of 1 million or more.
-            // The filter keeps smaller cities in the first layer only.
-            mymap.addLayer({
-                id: 'large-cities-layer',
-                type: 'circle',
-                source: 'population',
+            // Highlight only the 10 most populated cities.
+            fetch('data/world-cities.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    // Sort cities from highest to lowest population.
+                    data.features.sort((a, b) =>
+                        Number(b.properties.population) -
+                        Number(a.properties.population)
+                    );
 
-                // Only display cities with populations of 1 million or more.
-                filter: ['>=', ['to-number', ['get', 'population']], 1000000],
+                    // Keep the 10 cities with the highest populations.
+                    const top10 = {
+                        type: 'FeatureCollection',
+                        features: data.features.slice(0, 10)
+                    };
 
-                // Circle sizes represent population categories.
-                // Larger circles draw attention to more populated cities.
-                // The thresholds match the legend categories.
-                paint: {
-                    // Increase circle size substantially for the largest cities.
-                    'circle-radius': [
-                        'step',
-                        ['to-number', ['get', 'population']],
-                        5,              // 1 to under 5 million
-                        5000000, 10,    // 5 to under 15 million
-                        15000000, 16,   // 15 to under 20 million
-                        20000000, 22    // 20 million or more
-                    ],
+                    mymap.addSource('top10-cities', {
+                        type: 'geojson',
+                        data: top10
+                    });
 
-                    // Color categories use a light-to-dark pink scale.
-                    // Darker colors emphasize the most populated cities,
-                    // and the pink palette contrasts with the dark basemap.
-                    'circle-color': [
-                        'step',
-                        ['to-number', ['get', 'population']],
-                        '#FFC2D9',
-                        5000000, '#FF78AC',
-                        15000000, '#F72585',
-                        20000000, '#A4135C'
-                        ],
+                    mymap.addLayer({
+                        id: 'top10-cities-layer',
+                        type: 'circle',
+                        source: 'top10-cities',
+                        paint: {
+                            'circle-radius': 8,
+                            'circle-color': '#F72585',
+                            'circle-opacity': 0.9,
+                            'circle-stroke-width': 1,
+                            'circle-stroke-color': '#ffffff'
+                        }
+                    });
 
-                    // High opacity makes the highlighted cities easy to see.
-                    // White outlines separate circles from the basemap
-                    // and help distinguish overlapping symbols.
-                    'circle-opacity': 0.9,
-                    'circle-stroke-width': 1,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
-
-            // Show information when a larger city is clicked.
-            mymap.on('click', 'large-cities-layer', (event) => {
+            // Show city name and population when a highlighted city is clicked.
+            mymap.on('click', 'top10-cities-layer', (event) => {
                 const properties = event.features[0].properties;
 
                 new mapboxgl.Popup()
-                .setLngLat(event.lngLat)
-                .setHTML(
-                    '<strong>' + properties.city + '</strong><br>' +
-                    'Country: ' + properties.country + '<br>' +
-                    'Population: ' +
-                    Number(properties.population).toLocaleString()
-                )
-                .addTo(mymap);
+                    .setLngLat(event.lngLat)
+                    .setHTML(
+                        '<strong>' + properties.city + '</strong><br>' +
+                        'Country: ' + properties.country + '<br>' +
+                        'Population: ' +
+                        Number(properties.population).toLocaleString()
+                    )
+                    .addTo(mymap);
+                });
             });
 
             // Show information when a smaller city is clicked.
