@@ -64,7 +64,7 @@
             const grades = [2, 4.5, 8.5];
             const radii = [4, 9, 17];
             const colors = ['#fdd49e', '#d7301f', '#7f0000'];
-            const labels = ['<strong>Magnitude</strong>'];
+            const labels = ['<strong>Earthquake Magnitude</strong>'];
 
             for (let i = 0; i < grades.length; i++) {
                 const value = grades[i];
@@ -78,14 +78,17 @@
                 );
             }
 
-            const source =
-                '<p style="text-align:right; font-size:10pt;">Source: ' +
-                '<a href="https://earthquake.usgs.gov/earthquakes/">USGS</a></p>';
+           const source =
+            '<p style="font-size:11px; text-align:left;">' +
+            'Larger and darker colors represent stronger earthquakes.' +
+            '</p>' +
+            '<p style="text-align:right; font-size:10pt;">Source: ' +
+            '<a href="https://earthquake.usgs.gov/earthquakes/">USGS</a></p>';
 
             legend.innerHTML = labels.join('') + source;
         </script>
     <script>
-        mapboxgl.accessToken = '';
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
         const mymap = new mapboxgl.Map({
             container: 'map',
             //style: 'mapbox://styles/mapbox/light-v11',
@@ -145,15 +148,15 @@
                     'circle-stroke-color': 'white'
                 }
             });
-        });
-        mymap.on('click', 'earthquakes-layer', (event) => {
-            const feature = event.features[0];
-            const coordinates = feature.geometry.coordinates.slice(0, 2);
+            mymap.on('click', 'earthquakes-layer', (event) => {
+                const feature = event.features[0];
+                const coordinates = feature.geometry.coordinates.slice(0, 2);
 
-            new mapboxgl.Popup()
-                .setLngLat(coordinates)
-                .setHTML(`<strong>Magnitude:</strong> ${feature.properties.mag}`)
-                .addTo(mymap);
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<strong>Magnitude:</strong> ${feature.properties.mag}`)
+                    .addTo(mymap);
+            });
         });
     </script>
 </body>
