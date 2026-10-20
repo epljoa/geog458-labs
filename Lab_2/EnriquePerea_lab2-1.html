@@ -146,7 +146,6 @@
                 }
             });
         });
-        // changes made
         mymap.on('click', 'earthquakes-layer', (event) => {
             const feature = event.features[0];
             const coordinates = feature.geometry.coordinates.slice(0, 2);
