@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>World Cities</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.6.0/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial}
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        /* Layout of the legend panel. */
+        
+        /* Title panel in the upper-left corner. */
+        #map-title {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 5px;
+            max-width: 300px;
+            box-shadow: 0 1px 5px #999;
+        }
+
+        #map-title h1 {
+            font-size: 20px;
+            margin: 0 0 5px;
+        }
+
+        #map-title p {
+            font-size: 12px;
+            margin: 0;
+        }
+
+        /* Layout of the legend panel. */
+        #legend {
+            position: absolute;
+            bottom: 0;
+            left: 15px;
+            background: #fff;
+            margin-bottom: 25px;
+            padding: 10px 15px;
+            border-radius: 3px;
+            box-shadow: 0 1px 5px #999;
+            z-index: 1;
+            font-size: 12px;
+            min-width: 170px;
+        }
+
+        /* Each row for a population value. */
+        .break {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 8px 0;
+            min-height: 24px;
+        }
+
+        /* Make the legend symbols circular and preserve their sizes. */
+        .dot {
+            display: inline-block;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* Explanatory text beneath the legend values. */
+        .legend-note {
+            margin-top: 12px;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .legend-source {
+            text-align: right;
+            font-size: 10pt;
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Title and context explain what the map displays. -->
+    <div id="map-title">
+        <h1>World Cities: Population</h1>
+        <p>All cities with larger populations highlighted</p>
+    </div>
+
+    <div id="legend"></div>
+    
+    <!-- Separate legend script. -->
+        <script>
+            const legend = document.getElementById('legend');
+
+            // These population ranges match the circle sizes and colors below.
+            const grades = [
+                '1 to under 5 million',
+                '5 to under 15 million',
+                '15 to under 20 million',
+                '20 million or more'
+            ];
+             // These are the circle radii used for the highlighted cities.
+            const radii = [5, 10, 16, 22];
+
+            // Light-to-dark pinks make larger cities stand out on the dark basemap.
+            const colors = [
+                '#FFC2D9',
+                '#FF78AC',
+                '#F72585',
+                '#A4135C'
+            ];
+
+            const labels = ['<strong>City Population</strong>'];
+
+            // Cities under 1 million remain pale yellow.
+            labels.push(
+            '<p class="break">' +
+            '<i class="dot" style="background:#fee8a8; width:4px; height:4px;"></i>' +
+            '<span>Under 1 million</span></p>'
+            );
+
+            // Add each population category to the legend.
+            for (let i = 0; i < grades.length; i++) {
+            const diameter = 2 * radii[i];
+
+            labels.push(
+                '<p class="break">' +
+                '<i class="dot" style="background:' + colors[i] +
+                '; width:' + diameter + 'px; height:' + diameter +
+                'px;"></i>' +
+                '<span>' + grades[i] + '</span></p>'
+            );
+            }
+
+            // Explain how to read the symbols and identify the data source.
+            const source =
+                '<p class="legend-note">'   +
+                'Larger and darker pinks represent larger populations.' +
+                '</p>' +
+                '<p class="legend-source">Source: Natural Earth</p>';
+
+            legend.innerHTML = labels.join('') + source;
+        </script>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
+        const mymap = new mapboxgl.Map({
+            container: 'map',
+            // A dark basemap helps the pink and pale-yellow circles stand out.
+            style: 'mapbox://styles/mapbox/navigation-night-v1',
+            projection: 'globe',
+            center: [-96, 37.8],
+            zoom: 1
+        });
+        // Add atmospheric fog to complement the globe view.
+        mymap.on('style.load', () => {
+            mymap.setFog({});
+            // hide all point of interest (icons) such as restaurants and stores
+            // makes city circle more visible when zooming in
+            mymap.setConfigProperty('basemap', 'showPointOfInterestLabels', false);
+        });
+
+        mymap.on('load', () => {
+             // Load the supplied city population GeoJSON data.
+            mymap.addSource('population', {
+                type: 'geojson',
+                data: 'data/world-cities.geojson'
+            });
+
+            // Layer 1: display all cities, including those under 1 million.
+            // Small circles and pale yellow reduce clutter while keeping
+            // less-populated cities visible for comparison.
+            mymap.addLayer({
+                id: 'population-layer',
+                type: 'circle',
+                source: 'population',
+
+               paint: {
+                    // Increase circle size in steps as population increases.
+                    'circle-radius': [
+                        'step',
+                        ['get', 'population'],
+                        1.5,
+                        100000, 2,
+                        500000, 3,
+                        1000000, 4
+                    ],
+
+                    // Pale colors keep smaller cities from overpowering the map.
+                    'circle-color': '#fee8a8',
+                    'circle-opacity': 0.55,
+
+                    // Use a thin outline to help points remain visible.
+                    'circle-stroke-width': 0.3,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // Layer 2: highlight cities with populations of 1 million or more.
+            // The filter keeps smaller cities in the first layer only.
+            mymap.addLayer({
+                id: 'large-cities-layer',
+                type: 'circle',
+                source: 'population',
+
+                // Only display cities with populations of 1 million or more.
+                filter: ['>=', ['to-number', ['get', 'population']], 1000000],
+
+                // Circle sizes represent population categories.
+                // Larger circles draw attention to more populated cities.
+                // The thresholds match the legend categories.
+                paint: {
+                    // Increase circle size substantially for the largest cities.
+                    'circle-radius': [
+                        'step',
+                        ['to-number', ['get', 'population']],
+                        5,              // 1 to under 5 million
+                        5000000, 10,    // 5 to under 15 million
+                        15000000, 16,   // 15 to under 20 million
+                        20000000, 22    // 20 million or more
+                    ],
+
+                    // Color categories use a light-to-dark pink scale.
+                    // Darker colors emphasize the most populated cities,
+                    // and the pink palette contrasts with the dark basemap.
+                    'circle-color': [
+                        'step',
+                        ['to-number', ['get', 'population']],
+                        '#FFC2D9',
+                        5000000, '#FF78AC',
+                        15000000, '#F72585',
+                        20000000, '#A4135C'
+                        ],
+
+                    // High opacity makes the highlighted cities easy to see.
+                    // White outlines separate circles from the basemap
+                    // and help distinguish overlapping symbols.
+                    'circle-opacity': 0.9,
+                    'circle-stroke-width': 1,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // Show information when a larger city is clicked.
+            mymap.on('click', 'large-cities-layer', (event) => {
+                const properties = event.features[0].properties;
+
+                new mapboxgl.Popup()
+                .setLngLat(event.lngLat)
+                .setHTML(
+                    '<strong>' + properties.city + '</strong><br>' +
+                    'Country: ' + properties.country + '<br>' +
+                    'Population: ' +
+                    Number(properties.population).toLocaleString()
+                )
+                .addTo(mymap);
+            });
+
+            // Show information when a smaller city is clicked.
+            mymap.on('click', 'population-layer', (event) => {
+                const properties = event.features[0].properties;
+
+                new mapboxgl.Popup()
+                    .setLngLat(event.lngLat)
+                    .setHTML(
+                    '<strong>' + properties.city + '</strong><br>' +
+                    'Country: ' + properties.country + '<br>' +
+                    'Population: ' +
+                    Number(properties.population).toLocaleString()
+                    )
+                    .addTo(mymap);
+                });
+            });
+        // add fullscreen button so users can expand the map to fill the screen 
+        mymap.addControl(new mapboxgl.FullscreenControl());
+        // add zoom-in,zoom-out, and compass to control map view
+        mymap.addControl(new mapboxgl.NavigationControl());
+    </script>
+</body>
+</html>
