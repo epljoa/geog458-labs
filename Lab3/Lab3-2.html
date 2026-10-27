@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seattle Tree Canopy and Parks</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.css">
+  <style>
+    body { margin: 0; font: 14px/1.5 Arial, sans-serif; color: #182e3a; }
+    #map { position: absolute; inset: 0; }
+    #panel { position: absolute; top: 12px; left: 12px; padding: 16px;
+      width: 260px; max-width: calc(100% - 100px); background: white;
+      max-height: calc(100% - 80px); overflow: auto; border-radius: 6px; }
+    h1 { margin: 0 0 8px; font-size: 19px; }
+    p { margin: 8px 0; }
+    .maplibregl-popup-content { white-space: pre-line; }
+  </style>
+</head>
+<body>  
+  <div id="map"></div>
+  <section id="panel">
+    <h1>Seattle Tree Canopy and Parks</h1>
+    <p>Tree canopy: City of Seattle, 2016 | Parks: Seattle City GIS</p>
+    <p id="status">Step 1: map frame ready; add the basemap next.</p>
+    <div id="surface-control" hidden>
+      <label><input id="show-surface" type="checkbox" checked> Show tree canopy</label>
+    </div>
+    <div id="park-control" hidden>
+      <label><input id="show-parks" type="checkbox" checked> Show parks</label>
+    </div>
+  </section>
+
+  <script type="module">
+    import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.15.0/dist/maplibre-gl.mjs';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {},
+        layers: [{ id: 'background', type: 'background',
+          paint: { 'background-color': '#edf1f0' } }]
+      },
+      center: [-122.3321, 47.6062],
+      zoom: 10,
+      minZoom: 8,
+      maxZoom: 12,
+      maxBounds: [[-122.75, 47.10], [-122.05, 48.15]]
+    });
+    map.addControl(new maplibregl.NavigationControl());
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }));
+
+    map.on('error', (event) => {
+      document.getElementById('status').textContent =
+        'Load error: check the file path and browser Console.';
+      console.error(event.error);
+    });
+
+    map.on('load', () => {
+      // Step 2: basemap tiles
+      map.addSource('basemap-tiles', {
+        type: 'raster',
+        tiles: ['assets/TreeCanopy-Ind3/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-122.75, 47.10, -122.05, 48.15],
+        attribution: '© Mapbox © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      });
+      map.addLayer({
+        id: 'basemap',
+        type: 'raster',
+        source: 'basemap-tiles',
+        paint: { 'raster-opacity': 1, 'raster-fade-duration': 0 }
+      });
+
+      document.getElementById('status').textContent =
+        'Step 2: check your basemap.';
+
+      // Step 3: tree canopy tiles
+      map.addSource('canopy-tiles', {
+        type: 'raster',
+        tiles: ['assets/TreeCanopy/{z}/{x}/{y}.png'],
+        tileSize: 256,
+        scheme: 'xyz',
+        minzoom: 8,
+        maxzoom: 12,
+        bounds: [-122.75, 47.10, -122.05, 48.15],
+        attribution: 'Tree canopy: City of Seattle, 2016'
+      });
+      map.addLayer({
+        id: 'tree-canopy',
+        type: 'raster',
+        source: 'canopy-tiles',
+        paint: {
+          'raster-opacity': 0.7,
+          'raster-fade-duration': 0
+        }
+      }); 
+      document.getElementById('surface-control').hidden = false;
+      document.getElementById('show-surface').addEventListener('change', (event) => {
+        map.setLayoutProperty('tree-canopy', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+      });
+
+      document.getElementById('status').textContent =
+        'Step 3: toggle tree canopy to compare it with the basemap.';
+
+      // Step 4: park locations and popups
+      map.addSource('park-data', {
+        type: 'geojson',
+        data: 'data/Park_Centroid.geojson'
+      });
+
+      map.addLayer({
+        id: 'parks',
+        type: 'circle',
+        source: 'park-data',
+        paint: {
+          'circle-radius': 5,
+          'circle-color': '#174a70',
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.5
+        }
+      });
+
+      map.on('click', 'parks', (event) => {
+        const feature = event.features[0];
+        const park = feature.properties;
+
+        new maplibregl.Popup()
+          .setLngLat(feature.geometry.coordinates)
+          .setText(park.NAME || 'Park name unavailable')
+          .addTo(map);
+      });
+      map.on('mouseenter', 'parks', () => {
+        map.getCanvas().style.cursor = 'pointer';
+      });
+      map.on('mouseleave', 'parks', () => {
+        map.getCanvas().style.cursor = '';
+      });
+      document.getElementById('park-control').hidden = false;
+      document.getElementById('show-parks').addEventListener('change', (event) => {
+        map.setLayoutProperty('parks', 'visibility',
+          event.target.checked ? 'visible' : 'none');
+      });
+      document.getElementById('status').textContent =
+        'Click a park location to see its name.';
+    });
+  </script>
+</body>
+</html>
