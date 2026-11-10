@@ -1,9 +1,15 @@
+# Study Design
+
 The region I choose is San Francisco Bay on October 6, 2023. I choose San Francisco because it has many vessels passing through the golden gate bridge cargo, passengers, and othe types of vessles. I also choose  October 6, 2023 because its during Fleet week, which gave me many vessel data to examine during this event and see how they interact with one another during a busy day or notable event. This data does include some of October 5, 2023 data. 
 
 I obtained my dataset from AccessASI and covers most of the day I choose, including some from the previous day. I kept the dataset manageable by selecting only one day and only to the area I wanted to study. Then the data was convereted into vessel paths for the animated map. This map displays time in Pacific Daylight Time (PDT)
 
+# Interpretation 
+
 Patterns I noticed on October 6 was during most of the day time there was not a lot of traffic or vessels in the water. This may be because many people are out working, its a weekday, nothing really happens. But for passenger vessles around 6:00 PDT there is a sudden boom of them in the water that go on until around 17:00 PDT, data cuts off, where it goes back to a few vessels. This could be because its Fleet week a civic celebration that honors U.S. Armed Forces where they showcase naval vessels and many people want to see them up close. But also a Friady and many people are wanting to enjoy the day, without worrying about work the following day. Around 6:00 PDT there is many passenger vessles coming into San Francisco piers a majority from West Berkeley, Oakland, and Bay Farm Island.
 For Cargo and Tanker vessels nothing happens on the 6th just a few coming in and out from the start of the day and near end of the day.
 For other vessles there is a somewhat graudal increase of vessels in the water starting around 6:00 PDT and high count around 8:00 PDT but goes on until the data cuts off, but many of them go back and forth around San Francisco piers and other go back and forth around the golden gate bridge. It could be because its a tourist attraction. There is also this circular pattern around those areas. 
+
+# User-focused feature proposal
 
 One potential user of this map could be someone studying vessel traffic patterns in San Francisco Bay. They may want to identify individual vessels and better understand where they are traveling instead of only viewing all of the paths together. From reviewing the deck.gl Interactivity guide, which explains how users can interact with objects displayed on a map. Based on this resource, I would add a feature that allows users to click on an individual vessel path. When selected, the map could display additional information about the vessel, such as its vessel type and route. This would help users focus on individual vessels and better understand how their movement compares with other traffic in the bay.
