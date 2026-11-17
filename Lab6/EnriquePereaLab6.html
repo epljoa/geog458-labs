@@ -61,8 +61,7 @@
       <p class="muted">Population in 2020 · <span id="selection-mode">All counties</span></p>
       <p id="county-count">Loading…</p>
     </div>
-    <h2 style="font-size:17px">Population trend</h2>
-    <div id="county-chart"></div>
+    <h2 style="font-size:17px">Population growth rate (2000–2020)</h2>    <div id="county-chart"></div>
     <p id="chart-note">The linked D3 graph will be connected in Step 4.</p>
     <p id="status" role="status">Loading map and WAcounties.geojson…</p>
     <p class="muted">Map colors show total population in 2020, not population density. The data are historical; this dashboard is not a live monitoring feed.</p>
@@ -72,7 +71,7 @@
     <div id="legend"><h2>Population in 2020</h2></div>
   </main>
   <script>
-    mapboxgl.accessToken = 'pk.eyJ1IjoiZXBsam9hIiwiYSI6ImNtdXp2bHhocTAwMTcyeXByeG1neGs3bWgifQ.gD-Q8YP6w11yzlrBOrkQXQ';
+    mapboxgl.accessToken = '';
     const map = new mapboxgl.Map({
       container: 'map', style: 'mapbox://styles/mapbox/light-v11',
       bounds: [[-124.85, 45.5], [-116.85, 49.05]], fitBoundsOptions: {padding: 30}
@@ -117,6 +116,15 @@
         // Empty connections keep the Starter runnable before Steps 2 and 4.
         let highlightCounties = function(features) {};
         let updateLinkedChart = function(features) {};
+
+        // Calculate population growth from 2000 to 2020
+        matchingCounties.forEach(county => {
+            const pop2000 = Number(county.properties.POP2000);
+            const pop2020 = Number(county.properties.POP2020);
+
+            county.properties.GROWTH_RATE =
+                ((pop2020 - pop2000) / pop2000) * 100;
+        });
 
         function areaLabel(features) {
           if (!features.length) return 'No matching counties';
@@ -165,15 +173,72 @@
             updateDashboard();
         });
 
+        
+        // ADDED: Popup for every county.
+        let countyVideoPopup = null;
+
         map.on('click', function(event) {
-            const hit = map.queryRenderedFeatures(event.point, {layers: ['county-fill']})[0];
-            selectedCounty = hit
-                ? matchingCounties.find(county => county.properties.OBJECTID === hit.properties.OBJECTID) || null
-                : null;
-            hoveredCounty = null;
-            document.getElementById('county-options').hidden = true;
-            document.getElementById('county-search').setAttribute('aria-expanded', 'false');
-            updateDashboard();
+          const hit = map.queryRenderedFeatures(event.point, {
+            layers: ['county-fill']
+          })[0];
+
+          selectedCounty = hit
+            ? matchingCounties.find(county =>
+                county.properties.OBJECTID === hit.properties.OBJECTID) || null
+            : null;
+
+          hoveredCounty = null;
+
+          if (countyVideoPopup) {
+            countyVideoPopup.remove();
+            countyVideoPopup = null;
+          }
+
+          if (selectedCounty) {
+            const properties = selectedCounty.properties;
+            const growth = Number(properties.GROWTH_RATE);
+
+            let popupHTML = `
+              <div style="max-width: 380px;">
+                <h3>${properties.NAMELSAD10}</h3>
+                <p><strong>Population in 2000:</strong>
+                  ${Number(properties.POP2000).toLocaleString()}</p>
+                <p><strong>Population in 2020:</strong>
+                  ${Number(properties.POP2020).toLocaleString()}</p>
+                <p><strong>Population growth (2000–2020):</strong>
+                  ${growth.toFixed(2)}%</p>
+              </div>
+            `;
+
+            // Keep the King County video.
+            if (properties.NAME10 === 'King') {
+              popupHTML += `
+                <div style="margin-top: 12px;">
+                  <h4>Learn more about King County</h4>
+                  <iframe
+                    width="100%"
+                    height="200"
+                    src="https://www.youtube.com/embed/1QW0amgcP0s"
+                    title="King County Video"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowfullscreen>
+                  </iframe>
+                </div>
+              `;
+            }
+
+            countyVideoPopup = new mapboxgl.Popup({
+              maxWidth: '420px'
+            })
+              .setLngLat(event.lngLat)
+              .setHTML(popupHTML)
+              .addTo(map);
+          }
+
+          document.getElementById('county-options').hidden = true;
+          document.getElementById('county-search').setAttribute('aria-expanded', 'false');
+          updateDashboard();
         });
 
         document.addEventListener('click', function(event) {
@@ -262,49 +327,114 @@
 
         // BEGIN STEP 4: D3 LINKING
         // The chart is created once. Every interaction supplies a new feature array.
-        const years = d3.range(2000, 2021);
-        const margin = {top: 18, right: 20, bottom: 36, left: 62};
-        const width = 440 - margin.left - margin.right;
-        const height = 280 - margin.top - margin.bottom;
+        const margin = {top: 20, right: 25, bottom: 45, left: 125};
+        const chartWidth = 440;
+        const width = chartWidth - margin.left - margin.right;
+
+        // The chart height adjusts depending on how many counties are displayed.
+        let chartHeight = 280;
+        let height = chartHeight - margin.top - margin.bottom;
+
+        //Create the SVG chart.
         const svg = d3.select('#county-chart').append('svg')
-        .attr('viewBox', '0 0 440 280').attr('role', 'img');
+            .attr('viewBox', '0 0 ' + chartWidth + ' ' + chartHeight)
+            .attr('role', 'img');
+
         const chartTitle = svg.append('title');
-        const chart = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
-        const x = d3.scaleLinear().domain([2000, 2020]).range([0, width]);
-        const y = d3.scaleLinear().range([height, 0]);
-        chart.append('g').attr('transform', 'translate(0,' + height + ')')
-        .call(d3.axisBottom(x).tickValues([2000, 2005, 2010, 2015, 2020]).tickFormat(d3.format('d')));
+        const chart = svg.append('g')
+            .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+        //The x-axis represents population growth percentages.
+        const x = d3.scaleLinear().range([0, width]);
+
+        //The y-axis lists the selected counties.
+        const y = d3.scaleBand()
+            .range([0, height])
+            .padding(0.2);
+
+        const xAxis = chart.append('g');
         const yAxis = chart.append('g');
-        const path = chart.append('path').attr('fill', 'none').attr('stroke', '#ffb547').attr('stroke-width', 3);
-        const dots = chart.append('g');
-        const line = d3.line().x(d => x(d.year)).y(d => y(d.population));
 
-        // This replaces the Starter's empty connection; no new map event is needed.
+        //This group holds the county growth-rate bars.
+        const bars = chart.append('g');
+
+        // This function updates the graph whenever the selected counties change.
         updateLinkedChart = function(features) {
-        const label = areaLabel(features);
-        document.getElementById('chart-note').textContent = features.length
-            ? label + ': annual population, 2000–2020. Multiple counties are summed; the y-axis starts at zero and rescales.'
-            : 'No matching counties. Clear or change the search to draw a graph.';
-        svg.style('display', features.length ? 'block' : 'none');
-        if (!features.length) return;
+            const label = areaLabel(features);
 
-        // map() transforms each year into one chart point; sum() uses only the input counties.
-        const series = years.map(function(year) {
-            return {
-            year: year,
-            population: d3.sum(features, feature => +feature.properties['POP' + year])
-            };
-        });
-        chartTitle.text(label + ' population, 2000–2020');
-        svg.attr('aria-label', label + ' population trend from 2000 to 2020');
-        y.domain([0, d3.max(series, d => d.population) * 1.08]).nice();
-        yAxis.call(d3.axisLeft(y).ticks(5).tickFormat(d3.format('~s')));
-        path.datum(series).attr('d', line);
-        dots.selectAll('circle').data(series, d => d.year).join('circle')
-            .attr('r', 3).attr('fill', '#ffb547')
-            .attr('cx', d => x(d.year)).attr('cy', d => y(d.population))
-            .selectAll('title').data(d => [d]).join('title')
-            .text(d => d.year + ': ' + d3.format(',')(d.population));
+            // Hide the chart if no counties match the search.
+            svg.style('display', features.length ? 'block' : 'none');
+
+            if (!features.length) {
+                document.getElementById('chart-note').textContent =
+                    'No matching counties. Clear or change the search to draw a graph.';
+                return;
+            }
+            // NEW: Get the growth rate for each selected county.
+            const series = features.map(function(feature) {
+                return {
+                    name: feature.properties.NAMELSAD10,
+                    growthRate: Number(feature.properties.GROWTH_RATE)
+                };
+            });
+            // NEW: When multiple counties are displayed, calculate their combined growth rate.
+            if (features.length > 1) {
+                const total2000 = d3.sum(features,
+                    feature => Number(feature.properties.POP2000));
+                const total2020 = d3.sum(features,
+                    feature => Number(feature.properties.POP2020));
+                const combinedGrowth = total2000 > 0
+                    ? ((total2020 - total2000) / total2000) * 100
+                    : 0;
+                series.push({
+                    name: 'Combined total',
+                    growthRate: combinedGrowth
+                });
+            }
+
+            // Adjust chart height based on the number of bars.
+            chartHeight = Math.max(280, series.length * 25 + margin.top + margin.bottom);
+            height = chartHeight - margin.top - margin.bottom;
+
+            svg.attr('viewBox', '0 0 ' + chartWidth + ' ' + chartHeight);
+            y.range([0, height]);
+
+            // Set the percentage scale, including zero.
+            const minRate = Math.min(0, d3.min(series, d => d.growthRate));
+            const maxRate = Math.max(0, d3.max(series, d => d.growthRate));
+
+            x.domain(minRate === maxRate ? [-1, 1] : [minRate, maxRate]).nice();
+
+            //Set the county names and growth-rate positions.
+            y.domain(series.map(d => d.name));
+
+            // Draw the percentage axis.
+            xAxis
+                .attr('transform', 'translate(0,' + height + ')')
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d => d + '%'));
+
+            // Draw the county-name axis.
+            yAxis.call(d3.axisLeft(y));
+
+            // Draw one horizontal bar for each county.
+            bars.selectAll('rect')
+                .data(series, d => d.name)
+                .join('rect')
+                .attr('x', d => x(Math.min(0, d.growthRate)))
+                .attr('y', d => y(d.name))
+                .attr('width', d => Math.abs(x(d.growthRate) - x(0)))
+                .attr('height', y.bandwidth())
+                .attr('fill', '#ffb547');
+
+            // Update the chart title and description.
+            chartTitle.text(label + ' population growth rate, 2000–2020');
+
+            svg.attr('aria-label',
+                label + ' population growth rates from 2000 to 2020');
+
+            document.getElementById('chart-note').textContent =
+                'Percentage population growth from 2000 to 2020. ' +
+                'The combined total is shown when multiple counties are displayed.';
         };
         // END STEP 4
 
